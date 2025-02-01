@@ -1,0 +1,55 @@
+name: Feature Request
+description: Suggest a new agent, workflow, or capability
+title: "[Feature]: "
+labels: ["enhancement"]
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Have an idea for a new agent or feature? Describe it below.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or use case
+      description: What problem does this solve? What use case does it address?
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: Describe the workflow or feature you'd like to see.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: agent-tier
+    attributes:
+      label: Agent tier
+      description: Which tier does this belong to?
+      options:
+        - 0000 — Orchestrator
+        - 1xxx — Specialist Agent
+        - 9xxx — Monitoring / Scoring
+        - Not sure
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Any alternative approaches you've considered?
+    validations:
+      required: false
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Any other context, mockups, or references.
+    validations:
+      required: false

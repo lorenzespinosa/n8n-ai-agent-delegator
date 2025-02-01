@@ -1,0 +1,51 @@
+name: Improvement
+description: Suggest an improvement to an existing agent or workflow
+title: "[Improvement]: "
+labels: ["improvement"]
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Suggest an improvement to an existing workflow or agent pattern.
+
+  - type: input
+    id: workflow
+    attributes:
+      label: Workflow file
+      description: Which workflow JSON file would be improved?
+      placeholder: e.g., workflows/1000-agent-email.json
+    validations:
+      required: true
+
+  - type: textarea
+    id: current
+    attributes:
+      label: Current behavior
+      description: How does the workflow currently work?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed
+    attributes:
+      label: Proposed improvement
+      description: What change would you make and why?
+    validations:
+      required: true
+
+  - type: textarea
+    id: impact
+    attributes:
+      label: Expected impact
+      description: How does this improve reliability, accuracy, or performance?
+    validations:
+      required: false
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Any other context — screenshots, logs, related issues.
+    validations:
+      required: false

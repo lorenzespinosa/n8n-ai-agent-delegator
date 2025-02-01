@@ -1,0 +1,33 @@
+# n8n instance metadata
+.n8n/
+*.n8n
+
+# Credentials — never commit
+*credentials*.json
+*secret*
+.env
+.env.*
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE / editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-error.log*
+
+# Logs
+*.log
+
+# Build artifacts
+dist/
+build/

@@ -1,0 +1,88 @@
+# n8n-ai-agent-delegator
+
+> Multi-agent AI task delegation architecture for n8n — a central orchestrator routes natural-language commands to specialized agent workflows with confidence scoring and human-in-the-loop gates.
+
+**Tested on:** n8n v1.x.x | **License:** MIT | **Status:** Active
+
+---
+
+## What It Does
+
+A production-grade multi-agent system built entirely in n8n:
+
+- **Central orchestrator** — classifies natural-language commands and routes to the right specialist agent
+- **Email agent** — draft, send, and summarize emails
+- **Calendar agent** — check availability, schedule/reschedule meetings
+- **Research agent** — web search, document Q&A via vector database
+- **Content agent** — generate drafts, social posts, and summaries
+- **Confidence scoring** — every agent output includes a confidence score; low scores route to human review
+- **Human-in-the-loop** — write operations (send, create, publish) always require human approval
+
+Uses error handling patterns from [n8n-error-handling-pattern](https://github.com/lorenzespinosa/n8n-error-handling-pattern).
+Integrates with legal ops workflows from [n8n-legal-ops-templates](https://github.com/lorenzespinosa/n8n-legal-ops-templates).
+
+## Architecture
+
+```mermaid
+flowchart TD
+    INPUT["Natural Language Input"] --> ORCH["0000-Orchestrator<br/>Intent Classification"]
+
+    ORCH --> |"email intent"| EMAIL["1000-Email Agent<br/>Draft · Send · Summarize"]
+    ORCH --> |"calendar intent"| CAL["1001-Calendar Agent<br/>Check · Schedule · Reschedule"]
+    ORCH --> |"research intent"| RES["1002-Research Agent<br/>Search · Q&A · Cite"]
+    ORCH --> |"content intent"| CONT["1003-Content Agent<br/>Draft · Post · Summarize"]
+
+    EMAIL --> CONF{"9000-Monitor<br/>Confidence Score"}
+    CAL --> CONF
+    RES --> CONF
+    CONT --> CONF
+
+    CONF -->|"high confidence"| OUT["Output to User"]
+    CONF -->|"low confidence"| HUMAN["Human Review Queue"]
+    CONF -->|"write operation"| APPROVE{"Human Approval Gate"}
+
+    APPROVE -->|"approved"| EXEC["Execute Action"]
+    APPROVE -->|"rejected"| REVISE["Revise & Resubmit"]
+```
+
+## Agent Naming Convention
+
+| Tier | Prefix | Role | Example |
+|------|--------|------|---------|
+| Orchestrator | `0000` | Central controller, routing | `0000-orchestrator.json` |
+| Agents | `1xxx` | Specialist task execution | `1000-agent-email.json` |
+| Monitoring | `9xxx` | Scoring, logging, metrics | `9000-monitor.json` |
+
+## How to Import
+
+1. Download workflow JSONs from the `workflows/` directory
+2. Import the orchestrator first, then agents, then monitor
+3. Import error handling sub-workflows from [n8n-error-handling-pattern](https://github.com/lorenzespinosa/n8n-error-handling-pattern)
+4. Configure credential placeholders (documented per workflow)
+5. Set `active: true` only after testing with sample commands from `payloads/`
+
+## Workflows
+
+| File | Agent | Description |
+|------|-------|-------------|
+| *(coming in v0.2.0)* | — | — |
+
+## Multi-Platform
+
+| Platform | Coverage |
+|----------|---------|
+| n8n | Full workflow JSON (importable) |
+| Make | `docs/make-equivalent.md` — orchestrator pattern guide |
+| Zapier | `docs/zapier-equivalent.md` — orchestrator pattern guide |
+
+## Business Impact
+
+*(Coming in v0.2.0 — task delegation time savings, accuracy metrics)*
+
+## Contributing
+
+See [CONTRIBUTING.md](./CONTRIBUTING.md). All contributions require confidence scoring and human-in-the-loop gates on write operations.
+
+## License
+
+[MIT](./LICENSE) © 2025 Lorenz Espinosa
