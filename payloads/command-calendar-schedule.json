@@ -1,0 +1,12 @@
+{
+  "command": "Schedule a client meeting with David Chen tomorrow at 10am for 1 hour to discuss the arraignment",
+  "intent": "calendar",
+  "action": "schedule",
+  "parameters": {
+    "attendee": "David Chen",
+    "date": "tomorrow",
+    "time": "10:00 AM",
+    "duration": "1 hour",
+    "topic": "arraignment discussion"
+  }
+}

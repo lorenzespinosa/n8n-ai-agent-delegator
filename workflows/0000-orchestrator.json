@@ -1,0 +1,356 @@
+{
+  "name": "0000-orchestrator",
+  "nodes": [
+    {
+      "id": "a1b2c3d4-0001-4000-8000-000000000001",
+      "name": "Webhook - Receive Command",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 400],
+      "parameters": {
+        "path": "orchestrator",
+        "httpMethod": "POST",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "webhookId": "orchestrator-entry"
+    },
+    {
+      "id": "a1b2c3d4-0001-4000-8000-000000000002",
+      "name": "Extract Intent from Command",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 400],
+      "parameters": {
+        "jsCode": "// Extract raw command text and do preliminary parsing\nconst input = $input.first().json;\nconst command = (input.command || input.body?.command || '').toLowerCase().trim();\n\nif (!command) {\n  throw new Error('No command text provided in payload');\n}\n\n// Keyword-based pre-classification (fallback if AI is unavailable)\nconst intentHints = {\n  email: ['email', 'draft', 'send email', 'reply to', 'forward', 'summarize email', 'inbox'],\n  calendar: ['schedule', 'meeting', 'calendar', 'reschedule', 'appointment', 'block time', 'availability'],\n  research: ['research', 'case law', 'statute', 'look up', 'find cases', 'precedent', 'legal research'],\n  content: ['write', 'blog', 'social media', 'post', 'article', 'newsletter', 'content']\n};\n\nlet hintIntent = 'unknown';\nfor (const [intent, keywords] of Object.entries(intentHints)) {\n  if (keywords.some(k => command.includes(k))) {\n    hintIntent = intent;\n    break;\n  }\n}\n\nreturn [{\n  json: {\n    command: command,\n    raw_input: input,\n    hint_intent: hintIntent,\n    timestamp: new Date().toISOString(),\n    execution_id: $execution.id\n  }\n}];"
+      }
+    },
+    {
+      "id": "a1b2c3d4-0001-4000-8000-000000000003",
+      "name": "OpenAI - Classify Intent",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 400],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: 'gpt-4o', messages: [{ role: 'system', content: 'You are an intent classifier for a legal operations assistant. Classify the user command into exactly one intent: email, calendar, research, content, or unknown. Respond with JSON: {\"intent\": \"<intent>\", \"confidence\": <0-1>, \"action\": \"<sub-action>\", \"reasoning\": \"<brief>\"}' }, { role: 'user', content: $json.command }], temperature: 0.1, response_format: { type: 'json_object' } }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      }
+    },
+    {
+      "id": "a1b2c3d4-0001-4000-8000-000000000004",
+      "name": "Parse Classification",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 400],
+      "parameters": {
+        "jsCode": "// Parse the OpenAI classification response\nconst prev = $('Extract Intent from Command').first().json;\nconst response = $input.first().json;\n\nlet classification;\ntry {\n  const content = response.choices[0].message.content;\n  classification = JSON.parse(content);\n} catch (e) {\n  // Fallback to keyword hint if AI parsing fails\n  classification = {\n    intent: prev.hint_intent,\n    confidence: prev.hint_intent !== 'unknown' ? 0.6 : 0.2,\n    action: 'unknown',\n    reasoning: 'AI classification failed, using keyword fallback'\n  };\n}\n\nreturn [{\n  json: {\n    command: prev.command,\n    intent: classification.intent,\n    action: classification.action || 'default',\n    confidence: classification.confidence || 0,\n    reasoning: classification.reasoning || '',\n    hint_intent: prev.hint_intent,\n    execution_id: prev.execution_id,\n    timestamp: prev.timestamp\n  }\n}];"
+      }
+    },
+    {
+      "id": "a1b2c3d4-0001-4000-8000-000000000005",
+      "name": "Route by Intent",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [1120, 400],
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "outputKey": "email",
+              "conditions": {
+                "options": { "caseSensitive": false },
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.intent }}",
+                    "rightValue": "email",
+                    "operator": { "type": "string", "operation": "equals" }
+                  }
+                ]
+              }
+            },
+            {
+              "outputKey": "calendar",
+              "conditions": {
+                "options": { "caseSensitive": false },
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.intent }}",
+                    "rightValue": "calendar",
+                    "operator": { "type": "string", "operation": "equals" }
+                  }
+                ]
+              }
+            },
+            {
+              "outputKey": "research",
+              "conditions": {
+                "options": { "caseSensitive": false },
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.intent }}",
+                    "rightValue": "research",
+                    "operator": { "type": "string", "operation": "equals" }
+                  }
+                ]
+              }
+            },
+            {
+              "outputKey": "content",
+              "conditions": {
+                "options": { "caseSensitive": false },
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.intent }}",
+                    "rightValue": "content",
+                    "operator": { "type": "string", "operation": "equals" }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "fallbackOutput": "extra"
+      }
+    },
+    {
+      "id": "a1b2c3d4-0001-4000-8000-000000000006",
+      "name": "Execute Email Agent",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [1380, 160],
+      "parameters": {
+        "workflowId": "={{ /* Set to 1000-agent-email workflow ID */ '' }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "a1b2c3d4-0001-4000-8000-000000000007",
+      "name": "Execute Calendar Agent",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [1380, 340],
+      "parameters": {
+        "workflowId": "={{ /* Set to 1001-agent-calendar workflow ID */ '' }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "a1b2c3d4-0001-4000-8000-000000000008",
+      "name": "Execute Research Agent",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [1380, 520],
+      "parameters": {
+        "workflowId": "={{ /* Set to 1002-agent-research workflow ID */ '' }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "a1b2c3d4-0001-4000-8000-000000000009",
+      "name": "Execute Content Agent",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [1380, 700],
+      "parameters": {
+        "workflowId": "={{ /* Set to content agent workflow ID */ '' }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "a1b2c3d4-0001-4000-8000-000000000010",
+      "name": "Unknown Intent Handler",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1380, 880],
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\nreturn [{\n  json: {\n    agent: 'none',\n    action: 'unknown_intent',\n    confidence: input.confidence || 0,\n    result: {\n      message: `Could not classify command: \"${input.command}\". Intent detected: ${input.intent} with confidence ${input.confidence}.`,\n      suggestion: 'Please rephrase your command or specify the intent (email, calendar, research, content).'\n    },\n    requires_approval: false,\n    routed_to: 'human_review',\n    review_reason: 'unclassified_intent',\n    execution_id: input.execution_id\n  }\n}];"
+      }
+    },
+    {
+      "id": "a1b2c3d4-0001-4000-8000-000000000011",
+      "name": "Aggregate Agent Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1640, 400],
+      "parameters": {
+        "jsCode": "// Aggregate the agent response and attach metadata\nconst agentResponse = $input.first().json;\nconst classification = $('Parse Classification').first().json;\n\nconst response = {\n  orchestrator: '0000-orchestrator',\n  original_command: classification.command,\n  classified_intent: classification.intent,\n  classification_confidence: classification.confidence,\n  agent_response: agentResponse,\n  confidence: agentResponse.confidence || classification.confidence,\n  requires_review: false,\n  completed_at: new Date().toISOString(),\n  execution_id: classification.execution_id\n};\n\n// Flag for human review if confidence is below threshold\nif (response.confidence < 0.7) {\n  response.requires_review = true;\n  response.review_reason = 'confidence_below_threshold';\n}\n\nreturn [{ json: response }];"
+      }
+    },
+    {
+      "id": "a1b2c3d4-0001-4000-8000-000000000012",
+      "name": "Check Confidence Threshold",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1860, 400],
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true },
+          "combinator": "and",
+          "conditions": [
+            {
+              "leftValue": "={{ $json.confidence }}",
+              "rightValue": 0.7,
+              "operator": { "type": "number", "operation": "lt" }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "a1b2c3d4-0001-4000-8000-000000000013",
+      "name": "Send to Human Review Queue",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2100, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "https://hooks.slack.com/services/PLACEHOLDER/PLACEHOLDER/PLACEHOLDER",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ text: `[Human Review Required] Command: \"${$json.original_command}\" | Intent: ${$json.classified_intent} | Confidence: ${$json.confidence} | Reason: ${$json.review_reason}`, blocks: [{ type: 'section', text: { type: 'mrkdwn', text: `*Human Review Required*\\nCommand: _${$json.original_command}_\\nIntent: ${$json.classified_intent}\\nConfidence: ${$json.confidence}\\nAgent Response: ${JSON.stringify($json.agent_response?.result || 'N/A').substring(0, 500)}` }}] }) }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "a1b2c3d4-0001-4000-8000-000000000014",
+      "name": "Respond with Result",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [2100, 500],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": 200
+        }
+      }
+    },
+    {
+      "id": "a1b2c3d4-0001-4000-8000-000000000015",
+      "name": "Respond with Review Notice",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [2340, 300],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": 202
+        }
+      }
+    },
+    {
+      "id": "a1b2c3d4-0001-4000-8000-000000000020",
+      "name": "Architecture Overview",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [60, 60],
+      "parameters": {
+        "content": "## 0000 - Orchestrator\n\nCentral controller for the AI agent delegator system.\n\n**Flow:**\n1. Webhook receives natural-language command\n2. Code node does keyword pre-classification (fallback)\n3. OpenAI classifies intent with confidence score\n4. Switch routes to the correct specialist agent\n5. Agent response is aggregated\n6. If confidence < 0.7 → human review via Slack\n\n**Naming Convention:**\n- 0xxx = Orchestrator\n- 1xxx = Specialist Agents\n- 9xxx = Monitoring & Audit\n\n**Setup:** Replace workflow IDs in Execute Workflow nodes after importing agents."
+      }
+    },
+    {
+      "id": "a1b2c3d4-0001-4000-8000-000000000021",
+      "name": "Confidence Threshold Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [1800, 160],
+      "parameters": {
+        "content": "## Confidence Gate\n\nAll agent outputs include a confidence score (0-1).\n\n- **>= 0.7**: Auto-respond to caller\n- **< 0.7**: Route to human review queue (Slack) AND respond with 202 Accepted\n\nWrite operations ALWAYS require human approval regardless of confidence (handled at the agent level)."
+      }
+    }
+  ],
+  "connections": {
+    "Webhook - Receive Command": {
+      "main": [
+        [{ "node": "Extract Intent from Command", "type": "main", "index": 0 }]
+      ]
+    },
+    "Extract Intent from Command": {
+      "main": [
+        [{ "node": "OpenAI - Classify Intent", "type": "main", "index": 0 }]
+      ]
+    },
+    "OpenAI - Classify Intent": {
+      "main": [
+        [{ "node": "Parse Classification", "type": "main", "index": 0 }]
+      ]
+    },
+    "Parse Classification": {
+      "main": [
+        [{ "node": "Route by Intent", "type": "main", "index": 0 }]
+      ]
+    },
+    "Route by Intent": {
+      "main": [
+        [{ "node": "Execute Email Agent", "type": "main", "index": 0 }],
+        [{ "node": "Execute Calendar Agent", "type": "main", "index": 0 }],
+        [{ "node": "Execute Research Agent", "type": "main", "index": 0 }],
+        [{ "node": "Execute Content Agent", "type": "main", "index": 0 }],
+        [{ "node": "Unknown Intent Handler", "type": "main", "index": 0 }]
+      ]
+    },
+    "Execute Email Agent": {
+      "main": [
+        [{ "node": "Aggregate Agent Response", "type": "main", "index": 0 }]
+      ]
+    },
+    "Execute Calendar Agent": {
+      "main": [
+        [{ "node": "Aggregate Agent Response", "type": "main", "index": 0 }]
+      ]
+    },
+    "Execute Research Agent": {
+      "main": [
+        [{ "node": "Aggregate Agent Response", "type": "main", "index": 0 }]
+      ]
+    },
+    "Execute Content Agent": {
+      "main": [
+        [{ "node": "Aggregate Agent Response", "type": "main", "index": 0 }]
+      ]
+    },
+    "Unknown Intent Handler": {
+      "main": [
+        [{ "node": "Aggregate Agent Response", "type": "main", "index": 0 }]
+      ]
+    },
+    "Aggregate Agent Response": {
+      "main": [
+        [{ "node": "Check Confidence Threshold", "type": "main", "index": 0 }]
+      ]
+    },
+    "Check Confidence Threshold": {
+      "main": [
+        [{ "node": "Send to Human Review Queue", "type": "main", "index": 0 }],
+        [{ "node": "Respond with Result", "type": "main", "index": 0 }]
+      ]
+    },
+    "Send to Human Review Queue": {
+      "main": [
+        [{ "node": "Respond with Review Notice", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "0000-orchestrator-v1",
+  "tags": [
+    { "name": "orchestrator" },
+    { "name": "ai-agent-delegator" }
+  ]
+}

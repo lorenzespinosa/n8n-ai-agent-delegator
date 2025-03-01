@@ -1,0 +1,11 @@
+{
+  "command": "Research recent Florida DUI case law on breath test refusal penalties in 2024",
+  "intent": "research",
+  "action": "search",
+  "parameters": {
+    "jurisdiction": "Florida",
+    "topic": "DUI breath test refusal penalties",
+    "year": "2024",
+    "depth": "comprehensive"
+  }
+}

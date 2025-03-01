@@ -1,0 +1,16 @@
+{
+  "agent": "1002-agent-research",
+  "action": "search",
+  "confidence": 0.45,
+  "result": {
+    "summary": "Limited results found for the specific query. Florida Statute 316.1939 covers refusal penalties but 2024 case law is sparse.",
+    "citations": [
+      {"title": "Florida Statute 316.1939", "url": "http://www.leg.state.fl.us/statutes/"}
+    ],
+    "gaps": ["No 2024 appellate decisions found matching criteria"]
+  },
+  "requires_approval": false,
+  "routed_to": "human_review",
+  "review_reason": "confidence_below_threshold",
+  "execution_time_ms": 4500
+}

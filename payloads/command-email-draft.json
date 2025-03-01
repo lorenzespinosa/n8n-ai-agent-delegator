@@ -1,0 +1,10 @@
+{
+  "command": "Draft an email to opposing counsel regarding the Rodriguez deposition schedule change to next Thursday at 2pm",
+  "intent": "email",
+  "action": "draft",
+  "parameters": {
+    "recipient_context": "opposing counsel",
+    "subject_hint": "deposition schedule change",
+    "key_details": "next Thursday at 2pm"
+  }
+}
