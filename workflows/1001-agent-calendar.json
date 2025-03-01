@@ -1,0 +1,242 @@
+{
+  "name": "1001-agent-calendar",
+  "nodes": [
+    {
+      "id": "c1b2c3d4-1001-4000-8000-000000000001",
+      "name": "Webhook - Calendar Agent",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 400],
+      "parameters": {
+        "path": "agent-calendar",
+        "httpMethod": "POST",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "webhookId": "agent-calendar-entry"
+    },
+    {
+      "id": "c1b2c3d4-1001-4000-8000-000000000002",
+      "name": "Parse Calendar Command",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 400],
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\nconst command = (input.command || '').toLowerCase().trim();\n\nlet action = input.action || 'unknown';\nif (action === 'unknown') {\n  if (command.includes('check') || command.includes('availability') || command.includes('free')) action = 'check';\n  else if (command.includes('reschedule') || command.includes('move') || command.includes('change time')) action = 'reschedule';\n  else if (command.includes('schedule') || command.includes('book') || command.includes('create')) action = 'schedule';\n}\n\nif (!command) {\n  throw new Error('No command text provided to calendar agent');\n}\n\nreturn [{\n  json: {\n    command: input.command,\n    action: action,\n    parameters: input.parameters || {},\n    execution_id: input.execution_id || $execution.id,\n    timestamp: new Date().toISOString()\n  }\n}];"
+      }
+    },
+    {
+      "id": "c1b2c3d4-1001-4000-8000-000000000003",
+      "name": "Switch by Action",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [680, 400],
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "outputKey": "check",
+              "conditions": {
+                "options": { "caseSensitive": false },
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "check",
+                    "operator": { "type": "string", "operation": "equals" }
+                  }
+                ]
+              }
+            },
+            {
+              "outputKey": "schedule",
+              "conditions": {
+                "options": { "caseSensitive": false },
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "schedule",
+                    "operator": { "type": "string", "operation": "equals" }
+                  }
+                ]
+              }
+            },
+            {
+              "outputKey": "reschedule",
+              "conditions": {
+                "options": { "caseSensitive": false },
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "reschedule",
+                    "operator": { "type": "string", "operation": "equals" }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "fallbackOutput": "extra"
+      }
+    },
+    {
+      "id": "c1b2c3d4-1001-4000-8000-000000000004",
+      "name": "HTTP - Check Calendar",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [940, 200],
+      "parameters": {
+        "method": "GET",
+        "url": "https://www.googleapis.com/calendar/v3/calendars/primary/events",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "timeMin", "value": "={{ new Date().toISOString() }}" },
+            { "name": "timeMax", "value": "={{ new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() }}" },
+            { "name": "singleEvents", "value": "true" },
+            { "name": "orderBy", "value": "startTime" }
+          ]
+        },
+        "options": { "timeout": 15000 }
+      }
+    },
+    {
+      "id": "c1b2c3d4-1001-4000-8000-000000000005",
+      "name": "Human Approval - Schedule",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [940, 400],
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\nreturn [{\n  json: {\n    ...input,\n    approval_status: 'pending',\n    approval_required: true,\n    approval_reason: 'write_operation_create_event',\n    approval_message: `Approval required to create calendar event. Attendee: ${input.parameters?.attendee || 'N/A'}, Time: ${input.parameters?.time || 'N/A'}, Topic: ${input.parameters?.topic || 'N/A'}`,\n    queued_at: new Date().toISOString()\n  }\n}];"
+      }
+    },
+    {
+      "id": "c1b2c3d4-1001-4000-8000-000000000006",
+      "name": "HTTP - Create Event",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1160, 400],
+      "parameters": {
+        "method": "POST",
+        "url": "https://www.googleapis.com/calendar/v3/calendars/primary/events",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ summary: $json.parameters?.topic || 'Meeting', start: { dateTime: $json.parameters?.start_time || new Date().toISOString() }, end: { dateTime: $json.parameters?.end_time || new Date(Date.now() + 3600000).toISOString() }, attendees: [{ email: $json.parameters?.attendee_email || '' }], description: `Scheduled via AI Agent. Command: ${$json.command}` }) }}",
+        "options": { "timeout": 15000 }
+      }
+    },
+    {
+      "id": "c1b2c3d4-1001-4000-8000-000000000007",
+      "name": "Human Approval - Reschedule",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [940, 600],
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\nreturn [{\n  json: {\n    ...input,\n    approval_status: 'pending',\n    approval_required: true,\n    approval_reason: 'write_operation_update_event',\n    approval_message: `Approval required to reschedule event. Command: \"${input.command}\"`,\n    queued_at: new Date().toISOString()\n  }\n}];"
+      }
+    },
+    {
+      "id": "c1b2c3d4-1001-4000-8000-000000000008",
+      "name": "HTTP - Update Event",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1160, 600],
+      "parameters": {
+        "method": "PATCH",
+        "url": "https://www.googleapis.com/calendar/v3/calendars/primary/events/{{ $json.parameters?.event_id || 'EVENT_ID' }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ start: { dateTime: $json.parameters?.new_start_time || '' }, end: { dateTime: $json.parameters?.new_end_time || '' }, description: `Rescheduled via AI Agent. Command: ${$json.command}` }) }}",
+        "options": { "timeout": 15000 }
+      }
+    },
+    {
+      "id": "c1b2c3d4-1001-4000-8000-000000000009",
+      "name": "Unsupported Action",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [940, 800],
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\nreturn [{\n  json: {\n    agent: '1001-agent-calendar',\n    action: input.action,\n    confidence: 0.2,\n    result: {\n      error: `Unsupported calendar action: ${input.action}`,\n      supported_actions: ['check', 'schedule', 'reschedule']\n    },\n    requires_approval: false,\n    execution_time_ms: 0\n  }\n}];"
+      }
+    },
+    {
+      "id": "c1b2c3d4-1001-4000-8000-000000000010",
+      "name": "Format Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1400, 400],
+      "parameters": {
+        "jsCode": "const startTime = new Date($('Parse Calendar Command').first().json.timestamp).getTime();\nconst input = $input.first().json;\nconst parsed = $('Parse Calendar Command').first().json;\n\nlet result = {};\nlet confidence = 0.5;\n\ntry {\n  if (input.items) {\n    // Calendar API response (check action)\n    const events = (input.items || []).map(e => ({\n      summary: e.summary,\n      start: e.start?.dateTime || e.start?.date,\n      end: e.end?.dateTime || e.end?.date,\n      attendees: (e.attendees || []).map(a => a.email)\n    }));\n    result = { events: events, count: events.length };\n    confidence = 0.92;\n  } else if (input.approval_required) {\n    result = { message: input.approval_message, status: 'pending_approval' };\n    confidence = 0.88;\n  } else if (input.htmlLink) {\n    // Successful create/update\n    result = { event_link: input.htmlLink, status: 'created', event_id: input.id };\n    confidence = 0.95;\n  } else {\n    result = input.result || input;\n    confidence = input.confidence || 0.5;\n  }\n} catch (e) {\n  result = { raw: input, parse_error: e.message };\n  confidence = 0.3;\n}\n\nconst isWriteOp = ['schedule', 'reschedule'].includes(parsed.action);\nconst executionTime = Date.now() - startTime;\n\nreturn [{\n  json: {\n    agent: '1001-agent-calendar',\n    action: parsed.action,\n    confidence: confidence,\n    result: result,\n    requires_approval: isWriteOp,\n    approval_reason: isWriteOp ? 'write_operation' : null,\n    execution_time_ms: executionTime,\n    execution_id: parsed.execution_id\n  }\n}];"
+      }
+    }
+  ],
+  "connections": {
+    "Webhook - Calendar Agent": {
+      "main": [
+        [{ "node": "Parse Calendar Command", "type": "main", "index": 0 }]
+      ]
+    },
+    "Parse Calendar Command": {
+      "main": [
+        [{ "node": "Switch by Action", "type": "main", "index": 0 }]
+      ]
+    },
+    "Switch by Action": {
+      "main": [
+        [{ "node": "HTTP - Check Calendar", "type": "main", "index": 0 }],
+        [{ "node": "Human Approval - Schedule", "type": "main", "index": 0 }],
+        [{ "node": "Human Approval - Reschedule", "type": "main", "index": 0 }],
+        [{ "node": "Unsupported Action", "type": "main", "index": 0 }]
+      ]
+    },
+    "HTTP - Check Calendar": {
+      "main": [
+        [{ "node": "Format Response", "type": "main", "index": 0 }]
+      ]
+    },
+    "Human Approval - Schedule": {
+      "main": [
+        [{ "node": "HTTP - Create Event", "type": "main", "index": 0 }]
+      ]
+    },
+    "HTTP - Create Event": {
+      "main": [
+        [{ "node": "Format Response", "type": "main", "index": 0 }]
+      ]
+    },
+    "Human Approval - Reschedule": {
+      "main": [
+        [{ "node": "HTTP - Update Event", "type": "main", "index": 0 }]
+      ]
+    },
+    "HTTP - Update Event": {
+      "main": [
+        [{ "node": "Format Response", "type": "main", "index": 0 }]
+      ]
+    },
+    "Unsupported Action": {
+      "main": [
+        [{ "node": "Format Response", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "1001-agent-calendar-v1",
+  "tags": [
+    { "name": "agent" },
+    { "name": "calendar" },
+    { "name": "ai-agent-delegator" }
+  ]
+}

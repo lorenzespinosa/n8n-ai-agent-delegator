@@ -1,0 +1,156 @@
+{
+  "name": "9000-monitor",
+  "nodes": [
+    {
+      "id": "e1b2c3d4-9000-4000-8000-000000000001",
+      "name": "Webhook - Receive Execution Data",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 400],
+      "parameters": {
+        "path": "monitor",
+        "httpMethod": "POST",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "webhookId": "monitor-entry"
+    },
+    {
+      "id": "e1b2c3d4-9000-4000-8000-000000000002",
+      "name": "Calculate Confidence Score",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 400],
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\n\n// Extract or compute confidence\nconst agentConfidence = input.confidence || 0;\nconst classificationConfidence = input.classification_confidence || 0;\nconst executionTimeMs = input.execution_time_ms || 0;\n\n// Composite confidence: weighted average\n// Agent confidence (70%) + classification confidence (20%) + time penalty (10%)\nconst timePenalty = executionTimeMs > 10000 ? 0.5 : executionTimeMs > 5000 ? 0.8 : 1.0;\nconst compositeConfidence = (agentConfidence * 0.7) + (classificationConfidence * 0.2) + (timePenalty * 0.1);\n\nconst threshold = 0.7;\n\nreturn [{\n  json: {\n    ...input,\n    composite_confidence: Math.round(compositeConfidence * 100) / 100,\n    agent_confidence: agentConfidence,\n    classification_confidence: classificationConfidence,\n    time_penalty: timePenalty,\n    below_threshold: compositeConfidence < threshold,\n    threshold: threshold,\n    evaluated_at: new Date().toISOString()\n  }\n}];"
+      }
+    },
+    {
+      "id": "e1b2c3d4-9000-4000-8000-000000000003",
+      "name": "Check Threshold",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [680, 400],
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true },
+          "combinator": "and",
+          "conditions": [
+            {
+              "leftValue": "={{ $json.below_threshold }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "true" }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "e1b2c3d4-9000-4000-8000-000000000004",
+      "name": "Slack - Human Review Alert",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [940, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "https://hooks.slack.com/services/PLACEHOLDER/PLACEHOLDER/PLACEHOLDER",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ text: `[Agent Monitor] Low confidence execution detected`, blocks: [{ type: 'header', text: { type: 'plain_text', text: 'Low Confidence Alert' }}, { type: 'section', fields: [{ type: 'mrkdwn', text: `*Agent:* ${$json.agent || 'unknown'}` }, { type: 'mrkdwn', text: `*Confidence:* ${$json.composite_confidence}` }, { type: 'mrkdwn', text: `*Threshold:* ${$json.threshold}` }, { type: 'mrkdwn', text: `*Action:* ${$json.action || 'unknown'}` }]}, { type: 'section', text: { type: 'mrkdwn', text: `*Command:* _${($json.original_command || $json.command || 'N/A').substring(0, 200)}_` }}, { type: 'actions', elements: [{ type: 'button', text: { type: 'plain_text', text: 'Approve' }, style: 'primary', value: $json.execution_id || '' }, { type: 'button', text: { type: 'plain_text', text: 'Reject' }, style: 'danger', value: $json.execution_id || '' }]}] }) }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "e1b2c3d4-9000-4000-8000-000000000005",
+      "name": "Format Audit Record",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1160, 400],
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\nconst confidence = $('Calculate Confidence Score').first().json;\n\nconst auditRecord = {\n  timestamp: new Date().toISOString(),\n  execution_id: confidence.execution_id || $execution.id,\n  agent: confidence.agent || 'unknown',\n  action: confidence.action || 'unknown',\n  command: (confidence.original_command || confidence.command || '').substring(0, 500),\n  composite_confidence: confidence.composite_confidence,\n  agent_confidence: confidence.agent_confidence,\n  classification_confidence: confidence.classification_confidence,\n  below_threshold: confidence.below_threshold,\n  requires_approval: confidence.requires_approval || false,\n  approval_reason: confidence.approval_reason || null,\n  routed_to_review: confidence.below_threshold,\n  execution_time_ms: confidence.execution_time_ms || 0,\n  result_summary: JSON.stringify(confidence.result || {}).substring(0, 1000),\n  status: confidence.below_threshold ? 'review_required' : 'completed'\n};\n\nreturn [{ json: auditRecord }];"
+      }
+    },
+    {
+      "id": "e1b2c3d4-9000-4000-8000-000000000006",
+      "name": "Google Sheets - Log Audit",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1380, 400],
+      "parameters": {
+        "method": "POST",
+        "url": "https://sheets.googleapis.com/v4/spreadsheets/SPREADSHEET_ID/values/AuditLog!A1:append",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "valueInputOption", "value": "RAW" },
+            { "name": "insertDataOption", "value": "INSERT_ROWS" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ values: [[ $json.timestamp, $json.execution_id, $json.agent, $json.action, $json.command, $json.composite_confidence, $json.agent_confidence, $json.classification_confidence, String($json.below_threshold), String($json.requires_approval), $json.approval_reason || '', String($json.routed_to_review), $json.execution_time_ms, $json.result_summary, $json.status ]] }) }}",
+        "options": { "timeout": 15000 }
+      }
+    },
+    {
+      "id": "e1b2c3d4-9000-4000-8000-000000000020",
+      "name": "Monitoring Architecture",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [60, 60],
+      "parameters": {
+        "content": "## 9000 - Monitor & Audit\n\nReceives execution data from the orchestrator or agents after each run.\n\n**Composite Confidence Formula:**\n- Agent confidence: 70% weight\n- Classification confidence: 20% weight\n- Time penalty: 10% weight (penalizes slow executions)\n\n**Threshold:** 0.7 (configurable)\n- Below threshold → Slack alert with approve/reject buttons\n- All executions → logged to Google Sheets audit trail\n\n**Audit columns:** timestamp, execution_id, agent, action, command, composite_confidence, agent_confidence, classification_confidence, below_threshold, requires_approval, approval_reason, routed_to_review, execution_time_ms, result_summary, status"
+      }
+    },
+    {
+      "id": "e1b2c3d4-9000-4000-8000-000000000021",
+      "name": "Setup Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [60, 340],
+      "parameters": {
+        "content": "## Setup\n\n1. Replace Slack webhook URL with your workspace's incoming webhook\n2. Replace SPREADSHEET_ID with your audit log Google Sheet ID\n3. Create sheet tab named 'AuditLog' with headers matching audit columns\n4. Add Google Sheets and Slack credentials\n5. Wire this workflow to receive data from the orchestrator's post-execution hook"
+      }
+    }
+  ],
+  "connections": {
+    "Webhook - Receive Execution Data": {
+      "main": [
+        [{ "node": "Calculate Confidence Score", "type": "main", "index": 0 }]
+      ]
+    },
+    "Calculate Confidence Score": {
+      "main": [
+        [{ "node": "Check Threshold", "type": "main", "index": 0 }]
+      ]
+    },
+    "Check Threshold": {
+      "main": [
+        [{ "node": "Slack - Human Review Alert", "type": "main", "index": 0 }],
+        [{ "node": "Format Audit Record", "type": "main", "index": 0 }]
+      ]
+    },
+    "Slack - Human Review Alert": {
+      "main": [
+        [{ "node": "Format Audit Record", "type": "main", "index": 0 }]
+      ]
+    },
+    "Format Audit Record": {
+      "main": [
+        [{ "node": "Google Sheets - Log Audit", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "9000-monitor-v1",
+  "tags": [
+    { "name": "monitoring" },
+    { "name": "audit" },
+    { "name": "ai-agent-delegator" }
+  ]
+}

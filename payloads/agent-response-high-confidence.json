@@ -1,0 +1,13 @@
+{
+  "agent": "1000-agent-email",
+  "action": "draft",
+  "confidence": 0.94,
+  "result": {
+    "subject": "RE: Rodriguez Deposition - Schedule Change",
+    "body": "Dear Counsel,\n\nI am writing to confirm the rescheduled deposition of Maria Rodriguez to Thursday, November 21, 2024 at 2:00 PM...",
+    "suggested_recipients": ["opposing.counsel@example.com"]
+  },
+  "requires_approval": true,
+  "approval_reason": "write_operation",
+  "execution_time_ms": 2340
+}
