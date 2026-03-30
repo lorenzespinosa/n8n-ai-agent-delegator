@@ -86,3 +86,26 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md). All contributions require confidence s
 ## License
 
 [MIT](./LICENSE) © 2025 Lorenz Espinosa
+
+---
+
+## Quick Start
+
+```bash
+# Clone and explore
+git clone https://github.com/lorenzespinosa/n8n-ai-agent-delegator.git
+cd n8n-ai-agent-delegator
+
+# Import workflows into n8n (order matters)
+# 1. Import error handling patterns from n8n-error-handling-pattern
+# 2. Import 9000-monitor.json first (other agents reference it)
+# 3. Import agent workflows (1000-1003)
+# 4. Import 0000-orchestrator.json last (routes to agents)
+# 5. Configure OpenAI API credentials
+# 6. Test with sample commands from payloads/
+```
+
+## Related Projects
+
+- [n8n-error-handling-pattern](https://github.com/lorenzespinosa/n8n-error-handling-pattern) — Error handling sub-workflows imported by the orchestrator
+- [n8n-legal-ops-templates](https://github.com/lorenzespinosa/n8n-legal-ops-templates) — Legal ops workflows that integrate with the agent system
