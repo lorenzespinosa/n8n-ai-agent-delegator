@@ -119,7 +119,7 @@
         "url": "https://api.example.com/email/send",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ to: $json.parameters?.recipient || '', subject: $json.parameters?.subject || '', body: $json.parameters?.body || '', from: 'attorney@leppardlaw.com' }) }}",
+        "jsonBody": "={{ JSON.stringify({ to: $json.parameters?.recipient || '', subject: $json.parameters?.subject || '', body: $json.parameters?.body || '', from: 'attorney@yourfirm.com' }) }}",
         "options": { "timeout": 15000 }
       }
     },
