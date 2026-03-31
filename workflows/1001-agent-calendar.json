@@ -111,7 +111,7 @@
       "typeVersion": 2,
       "position": [940, 400],
       "parameters": {
-        "jsCode": "const input = $input.first().json;\nreturn [{\n  json: {\n    ...input,\n    approval_status: 'pending',\n    approval_required: true,\n    approval_reason: 'write_operation_create_event',\n    approval_message: `Approval required to create calendar event. Attendee: ${input.parameters?.attendee || 'N/A'}, Time: ${input.parameters?.time || 'N/A'}, Topic: ${input.parameters?.topic || 'N/A'}`,\n    queued_at: new Date().toISOString()\n  }\n}];"
+        "jsCode": "// \u26a0\ufe0f TEMPLATE PLACEHOLDER \u2014 This node marks the approval point but does NOT block execution.\n// For production: Replace this Code node with an n8n Wait node (wait for webhook resume)\n// or an n8n Form node for interactive approval.\n// See: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.wait/\n\nconst input = $input.first().json;\nreturn [{\n  json: {\n    ...input,\n    approval_status: 'pending',\n    approval_required: true,\n    approval_reason: 'write_operation_create_event',\n    approval_message: `Approval required to create calendar event. Attendee: ${input.parameters?.attendee || 'N/A'}, Time: ${input.parameters?.time || 'N/A'}, Topic: ${input.parameters?.topic || 'N/A'}`,\n    queued_at: new Date().toISOString()\n  }\n}];"
       }
     },
     {
@@ -138,7 +138,7 @@
       "typeVersion": 2,
       "position": [940, 600],
       "parameters": {
-        "jsCode": "const input = $input.first().json;\nreturn [{\n  json: {\n    ...input,\n    approval_status: 'pending',\n    approval_required: true,\n    approval_reason: 'write_operation_update_event',\n    approval_message: `Approval required to reschedule event. Command: \"${input.command}\"`,\n    queued_at: new Date().toISOString()\n  }\n}];"
+        "jsCode": "// \u26a0\ufe0f TEMPLATE PLACEHOLDER \u2014 This node marks the approval point but does NOT block execution.\n// For production: Replace this Code node with an n8n Wait node (wait for webhook resume)\n// or an n8n Form node for interactive approval.\n// See: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.wait/\n\nconst input = $input.first().json;\nreturn [{\n  json: {\n    ...input,\n    approval_status: 'pending',\n    approval_required: true,\n    approval_reason: 'write_operation_update_event',\n    approval_message: `Approval required to reschedule event. Command: \"${input.command}\"`,\n    queued_at: new Date().toISOString()\n  }\n}];"
       }
     },
     {

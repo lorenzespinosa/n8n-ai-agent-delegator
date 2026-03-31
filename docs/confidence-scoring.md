@@ -16,7 +16,16 @@ confidence = (0.70 × agent_score) + (0.20 × classification_score) + (0.10 × t
 | Classification score | 20% | Orchestrator's intent classification confidence |
 | Time penalty | 10% | Deduction for slow responses (>10s = -5%, >30s = -10%) |
 
-## Routing Thresholds
+## Routing Thresholds (Current: 2-Band)
+
+| Score | Route | Action |
+|-------|-------|--------|
+| >= 0.70 | Direct output | Deliver to user |
+| < 0.70 | Human review | Route to human review queue before delivery |
+
+### Planned Enhancement: 4-Band Model
+
+A more granular routing model is planned for a future release:
 
 | Score | Route | Action |
 |-------|-------|--------|
