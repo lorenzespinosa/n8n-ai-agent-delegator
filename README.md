@@ -14,7 +14,6 @@ A production-grade multi-agent system built entirely in n8n:
 - **Email agent** — draft, send, and summarize emails
 - **Calendar agent** — check availability, schedule/reschedule meetings
 - **Research agent** — web search, document Q&A via vector database
-- **Content agent** — generate drafts, social posts, and summaries
 - **Confidence scoring** — every agent output includes a confidence score; low scores route to human review
 - **Human-in-the-loop** — write operations (send, create, publish) always require human approval
 
@@ -30,12 +29,9 @@ flowchart TD
     ORCH --> |"email intent"| EMAIL["1000-Email Agent<br/>Draft · Send · Summarize"]
     ORCH --> |"calendar intent"| CAL["1001-Calendar Agent<br/>Check · Schedule · Reschedule"]
     ORCH --> |"research intent"| RES["1002-Research Agent<br/>Search · Q&A · Cite"]
-    ORCH --> |"content intent"| CONT["1003-Content Agent<br/>Draft · Post · Summarize"]
-
     EMAIL --> CONF{"9000-Monitor<br/>Confidence Score"}
     CAL --> CONF
     RES --> CONF
-    CONT --> CONF
 
     CONF -->|"high confidence"| OUT["Output to User"]
     CONF -->|"low confidence"| HUMAN["Human Review Queue"]
@@ -44,6 +40,8 @@ flowchart TD
     APPROVE -->|"approved"| EXEC["Execute Action"]
     APPROVE -->|"rejected"| REVISE["Revise & Resubmit"]
 ```
+
+> **Important:** The human approval gates in agent workflows are structural placeholders. In production, replace the Code nodes with n8n [Wait](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.wait/) or [Form](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.form/) nodes for actual blocking approval.
 
 ## Agent Naming Convention
 
@@ -65,7 +63,11 @@ flowchart TD
 
 | File | Agent | Description |
 |------|-------|-------------|
-| *(coming in v0.2.0)* | — | — |
+| `0000-orchestrator.json` | Orchestrator | Intent classification + routing to specialists |
+| `1000-agent-email.json` | Email | Draft, send, summarize emails |
+| `1001-agent-calendar.json` | Calendar | Check, schedule, reschedule events |
+| `1002-agent-research.json` | Research | Web search, document Q&A, citations |
+| `9000-monitor.json` | Monitor | Confidence scoring + audit logging |
 
 ## Multi-Platform
 
@@ -99,7 +101,7 @@ cd n8n-ai-agent-delegator
 # Import workflows into n8n (order matters)
 # 1. Import error handling patterns from n8n-error-handling-pattern
 # 2. Import 9000-monitor.json first (other agents reference it)
-# 3. Import agent workflows (1000-1003)
+# 3. Import agent workflows (1000-1002)
 # 4. Import 0000-orchestrator.json last (routes to agents)
 # 5. Configure OpenAI API credentials
 # 6. Test with sample commands from payloads/
