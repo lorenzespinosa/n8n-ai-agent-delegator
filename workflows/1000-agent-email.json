@@ -86,6 +86,9 @@
       "name": "OpenAI - Draft Email",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
       "position": [940, 200],
       "parameters": {
         "method": "POST",
@@ -113,6 +116,9 @@
       "name": "HTTP - Send Email Placeholder",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
       "position": [1160, 400],
       "parameters": {
         "method": "POST",
@@ -128,6 +134,9 @@
       "name": "OpenAI - Summarize Email",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
       "position": [940, 600],
       "parameters": {
         "method": "POST",

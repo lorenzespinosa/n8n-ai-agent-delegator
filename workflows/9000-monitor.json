@@ -50,6 +50,9 @@
       "name": "Slack - Human Review Alert",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
       "position": [940, 300],
       "parameters": {
         "method": "POST",
@@ -75,6 +78,9 @@
       "name": "Google Sheets - Log Audit",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
       "position": [1380, 400],
       "parameters": {
         "method": "POST",

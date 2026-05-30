@@ -30,6 +30,9 @@
       "name": "HTTP - Web Search",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
       "position": [680, 400],
       "parameters": {
         "method": "POST",
@@ -57,6 +60,9 @@
       "name": "OpenAI - Synthesize Research",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
       "position": [1120, 400],
       "parameters": {
         "method": "POST",

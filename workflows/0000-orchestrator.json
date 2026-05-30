@@ -30,6 +30,9 @@
       "name": "OpenAI - Classify Intent",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
       "position": [680, 400],
       "parameters": {
         "method": "POST",
@@ -213,6 +216,9 @@
       "name": "Send to Human Review Queue",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
       "position": [2100, 300],
       "parameters": {
         "method": "POST",

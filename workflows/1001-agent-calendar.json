@@ -86,6 +86,9 @@
       "name": "HTTP - Check Calendar",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
       "position": [940, 200],
       "parameters": {
         "method": "GET",
@@ -119,6 +122,9 @@
       "name": "HTTP - Create Event",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
       "position": [1160, 400],
       "parameters": {
         "method": "POST",
@@ -146,6 +152,9 @@
       "name": "HTTP - Update Event",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
       "position": [1160, 600],
       "parameters": {
         "method": "PATCH",
